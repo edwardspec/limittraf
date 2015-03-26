@@ -1,0 +1,116 @@
+===============================================================================
+
+1. ACTIONS.
+
+What kind of restrictions do we need to impose in order to ensure that our
+outgoing traffic will not spike due to deliberately large download?
+
+1) Iptables ban (-A INPUT -s <badguy's_ip_or_subnet> -j DROP)
+	
+	This is the most effective and dangerous option, as it will affect legitimate users in the subnet in question.
+	It makes sense to unblock these IPs after a period of time, and then block for a longer period if relapse occurs.
+
+2) Local bandwidth limit (via 'tc qdisc add').
+
+	If someone is downloading much, we just limit their bandwidth.
+	If IPs are changed within /16 network, we limit the bandwidth for this network.
+	
+	Note: we prefer to limit a smaller network. For example, if all
+	requests are coming from five /24 subnets inside this /16 network,
+	we limit /24 subnets one-by-one by putting them inside the same
+	traffic queue (qdisc), so that their limit is shared (if another /24
+	from the same /16 appears, sum bandwidth for all of them remains
+	the same).
+
+3) "Traffic jail" mechanism.
+
+	If downloads are coming from different IPs (not enclosed in /16),
+	we can put all those IPs into one trafic queue (qdisc).
+	This way the sum badwidth of all downloaders is limited,
+	and new downloaders just slow down the others.
+	
+	I.e. we get the following picture:
+	-----------------------------------------
+	|            total bandwidth            |
+	-----------------------------------------
+	| legitimate users                 |jail|
+	-----------------------------------------
+	
+4) Logging.
+
+	Writing a note to log is useful for non-severe bandwidth spikes
+	(such rule allows us to detemine how often are the legitimate users
+	affected by our limits, and later we can cross-reference the
+	client IP in question with a webserver log to determine the cause
+	manually - e.g. it could be that one of pages on our website
+	contains too large images, which we haven't noticed).
+
+	Logging is invaluable if we want to detemine what limits to set.
+	E.g. we can set 20 limit rules - to 1 megabyte, 2 megabytes,
+	3 megabytes etc. up to 20 megabytes, and then assess how many
+	legitimate users were affected each time.
+
+===============================================================================
+
+2. TRIGGERS
+	
+What gives us an idea that some IP is making a deliberately large download?
+Inadequate traffic in a period of time (e.g. 15 minutes, 1 hour etc.) does.
+
+NOTE:
+	The definition of "inadequate traffic" differs greatly based on the
+	type of legitimate user activity, so these rules MUST be configured
+	specifically for the server in question.
+	
+	Normally it is safe to set this traffic limit to a value 2-3 times
+	greater than MAX - the maximum traffic that an extremely active
+	legitimate user would consume (just to be on a safe side).
+	
+	Obviously, we can set lower limits for smaller counteractions.
+	For example, if a client downloads more than MAX,
+		we can impose a light bandwidth limitation,
+	if a client downloads more that 2*MAX,
+		we can impose a heavy bandwidth limitation,
+	if a client downloads more that 5*MAX,
+		this client goes into the "traffic jail".
+
+Note that known search engines do not fall under these rules.
+It order for search engine to be recognized, its IP must resolve into
+a specifically whitelisted domain (like <something>.googlebot.com for Google),
+and this domain should be resolved back into this IP (for verification).
+
+===============================================================================
+
+3. HOW TO CONFIGURE?
+
+The main question is, of course, HOW DO I CHOOSE THOSE LIMITS.
+
+For streaming video the answer is pretty obvious (each video has its own
+natural bandwidth determined by video bitrate, and every client that exceeds
+this bandwidths is doing something wrong; it may be a legitimate user
+playing two videos in different browser tabs simultaneously, but it makes
+little sense and we can limit such user too - to discourage the practice).
+
+However, for a HTTP server with a generic website (text pages of variable
+length, where the number and size of images can vary greatly) it is somewhat
+difficult to draw the line, after which the bandwidth becomes evidently
+harmful.
+
+Consider that rule: "bandwidth usage spike for a short period of time
+is normal for a legitimate user, however the higher the period, the more
+limited should sum usage be".
+
+For example, a user (A) can visit the website, walk through 10 pages pretty fast
+(and the browser will download all images on those pages, even if the user
+doesn't actually need them), then finds the page he was looking for and
+starts to actually read. This will cause a bandwidth spike from this client
+for a short period of time (maybe several times more that average bandwidth
+for the entire visit), which is OK.
+
+On the other hand, when a non-legitimate client (B) downloads a lot, it will
+continue to do so over a greater period of time. Even if the bandwidth per
+second is lower that the same value for A, user B must be further limited.
+
+To summarize:
+	"BANDWIDTH PER SECOND" LIMITS FOR LOWER INTERVALS SHOULD BE HIGHER.
+	E.g. we can allow 5M in 5 minutes, 10M in 20 minutes, 15M in 3 hours.
