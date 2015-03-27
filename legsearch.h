@@ -27,7 +27,6 @@ void TerminateLegSearch();
 
 	@retval 1 A legitimate search engine.
 	@retval 0 Not a search engine (or unknown search engine).
-	@todo result caching
 */
 int is_legitimate_search_engine(const char *ip);
 
