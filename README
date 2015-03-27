@@ -18,7 +18,7 @@ NOTE: although the daemon itself is complete,
 the only supported action is logging (LIMITTRAF_ACTION_LOG).
 
 In order to actually ban someone, other actions (e.g. LIMITTRAF_ACTION_LIMIT
-or LIMITTRAF_ACTION_BAN) must be implemented in action.c/TakeAction().
+or LIMITTRAF_ACTION_BLOCK) must be implemented in action.c/TakeAction().
 
 _______________________________________________________________________________
 
