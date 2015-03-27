@@ -114,7 +114,6 @@ void ReadConfiguration(const char *filename)
 {
 	FILE *conf_file;
 	char *buffer; 
-	int len; /* strlen(buffer) */
 	char *p;
 	int lineno, trigger_idx;
 	pcre *cfg_regex;
@@ -166,7 +165,7 @@ void ReadConfiguration(const char *filename)
 	PLAN_limit_triggers_count = 0;
 	while(fgets(buffer, CONF_LINE_MAX, conf_file))
 	{
-		len = strlen(buffer) - 1;
+		int len = strlen(buffer) - 1;
 		if(len <= 0) continue; /* empty string (0 if in the middle of file, -1 if last) */
 		buffer[len] = '\0'; // remove \n
 		
@@ -246,7 +245,7 @@ void ReadConfiguration(const char *filename)
 		exit(1);
 	}
 	
-	int i, j, already_counted;
+	int i, j;
 	for(i = 0; i < trigger_idx; i ++)
 	{
 #if 0
@@ -258,7 +257,7 @@ void ReadConfiguration(const char *filename)
 		);
 #endif
 	
-		already_counted = -1;
+		int already_counted = -1;
 		for(j = 0; j < PLAN.count; j ++)
 		{
 			if(triggers[i].limit_interval == PLAN.intervals[j].seconds)
@@ -292,11 +291,10 @@ void ReadConfiguration(const char *filename)
 		2. Place actions into PLAN.intervals[...].actions[] arrays.
 		3. Sort them by 'level' (from lower to higher values).
 	*/
-	int action_idx;
 	for(j = 0; j < PLAN.count; j ++)
 	{
-		action_idx = 0;
-	
+		int action_idx = 0;
+
 		PLAN.intervals[j].actions = malloc(PLAN.intervals[j].count * sizeof(struct AnalyzePlanAction));
 		if(!PLAN.intervals[j].actions)
 		{

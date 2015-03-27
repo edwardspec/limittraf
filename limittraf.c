@@ -72,6 +72,7 @@ time_t TIME = 0; /* = time(NULL), an approximation for timestamp of current pack
 /* ... */
 static void Initialize(); /* Create the database and compile the regex */
 static void Analyze(); /* Called every ltAnalyzeInterval seconds */
+static void Terminate(); /* Free all used resources */
 
 int main( void )
 {
@@ -81,7 +82,6 @@ int main( void )
 	FILE *tcpdump;
 	int lineno;
 	time_t last_analyze;
-	int ret;
 	
 	/* IP and length are determined for each packet */
 	char ip[17]; int length;
@@ -110,24 +110,26 @@ int main( void )
 	
 	fprintf(stderr, "Starting %s\n", TcpDumpCommand);
 	tcpdump = popen(TcpDumpCommand, "r");
+	free(TcpDumpCommand);
+
 	if(!tcpdump)
 	{
 		fprintf(stderr, "popen(%s) failed: %s\n", ltTcpDump, strerror(errno));
 		return 1;
 	}
-	free(TcpDumpCommand);
 	
 	/* begin Main Loop */
 	lineno = 0;
 	last_analyze = time(NULL);
 	while(fgets(buffer, TCPDUMP_LINE_MAX, tcpdump))
 	{
+		int ret;
 		int off = strlen(buffer);
 #ifndef NDEBUG
 		if(!off)
 		{
 			fprintf(stderr, "tcpdump returned an empty line (bug in tcpdump or changed format). Exiting.\n");
-			exit(1);
+			break;
 		}
 #endif
 		fgets(&buffer[off - 1], TCPDUMP_LINE_MAX - off, tcpdump);
@@ -169,6 +171,10 @@ int main( void )
 			BeginTransaction();
 		}
 	}
+
+	/* Normally this code is not reached */
+	pclose(tcpdump);
+	Terminate();
 	
 	return 0;
 }
@@ -188,7 +194,7 @@ __attribute__((cold)) static void CompileTcpdumpRegex()
 __attribute__((cold)) static void Initialize()
 {
 	ReadConfiguration(ltCfgFile);
-	
+
 	if(mkdir(ltWorkDir, 0700) < 0 && errno != EEXIST)
 	{
 		fprintf(stderr, "mkdir(%s) failed: %s\n", ltWorkDir, strerror(errno));
