@@ -5,7 +5,7 @@ Purpose:
 	without limiting the connection speed of legitimate users.
 
 This is a UNIX daemon that:
-1) tracks all outgoing packages (via tcpdump),
+1) tracks all outgoing packets (via tcpdump),
 2) calculates the usage of outgoing bandwidth for every client IP,
 3) checks whether any clients exceed the limits (as defined in limittraf.conf),
 4) takes actions (such as iptables ban) towards the misbehaving clients.
